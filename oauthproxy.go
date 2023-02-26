@@ -53,6 +53,7 @@ const (
 	oauthCallbackPath = "/callback"
 	authOnlyPath      = "/auth"
 	userInfoPath      = "/userinfo"
+	refreshPath       = "/refresh"
 	staticPathPrefix  = "/static/"
 )
 
@@ -104,6 +105,7 @@ type OAuthProxy struct {
 	trustedIPs           *ip.NetSet
 
 	sessionChain      alice.Chain
+	refreshChain      alice.Chain
 	headersChain      alice.Chain
 	preAuthChain      alice.Chain
 	pageWriter        pagewriter.Writer
@@ -201,6 +203,7 @@ func NewOAuthProxy(opts *options.Options, validator func(string) bool) (*OAuthPr
 		return nil, fmt.Errorf("could not build pre-auth chain: %v", err)
 	}
 	sessionChain := buildSessionChain(opts, provider, sessionStore, basicAuthValidator)
+	refreshChain := buildRefreshChain(opts, provider, sessionStore, basicAuthValidator)
 	headersChain, err := buildHeadersChain(opts)
 	if err != nil {
 		return nil, fmt.Errorf("could not build headers chain: %v", err)
@@ -237,6 +240,7 @@ func NewOAuthProxy(opts *options.Options, validator func(string) bool) (*OAuthPr
 		basicAuthValidator: basicAuthValidator,
 		basicAuthGroups:    opts.HtpasswdUserGroups,
 		sessionChain:       sessionChain,
+		refreshChain:       refreshChain,
 		headersChain:       headersChain,
 		preAuthChain:       preAuthChain,
 		pageWriter:         pageWriter,
@@ -344,6 +348,7 @@ func (p *OAuthProxy) buildProxySubrouter(s *mux.Router) {
 	// The userinfo and logout endpoints needs to load sessions before handling the request
 	s.Path(userInfoPath).Handler(p.sessionChain.ThenFunc(p.UserInfo))
 	s.Path(signOutPath).Handler(p.sessionChain.ThenFunc(p.SignOut))
+	s.Path(refreshPath).Handler(p.refreshChain.ThenFunc(p.Proxy))
 }
 
 // buildPreAuthChain constructs a chain that should process every request before
@@ -410,6 +415,36 @@ func buildSessionChain(opts *options.Options, provider providers.Provider, sessi
 	}
 
 	chain = chain.Append(middleware.NewStoredSessionLoader(&middleware.StoredSessionLoaderOptions{
+		SessionStore:    sessionStore,
+		RefreshPeriod:   opts.Cookie.Refresh,
+		RefreshSession:  provider.RefreshSession,
+		ValidateSession: provider.ValidateSession,
+	}))
+
+	return chain
+}
+
+func buildRefreshChain(opts *options.Options, provider providers.Provider, sessionStore sessionsapi.SessionStore, validator basic.Validator) alice.Chain {
+	chain := alice.New()
+
+	if opts.SkipJwtBearerTokens {
+		sessionLoaders := []middlewareapi.TokenToSessionFunc{
+			provider.CreateSessionFromToken,
+		}
+
+		for _, verifier := range opts.GetJWTBearerVerifiers() {
+			sessionLoaders = append(sessionLoaders,
+				middlewareapi.CreateTokenToSessionFunc(verifier.Verify))
+		}
+
+		chain = chain.Append(middleware.NewJwtSessionLoader(sessionLoaders))
+	}
+
+	if validator != nil {
+		chain = chain.Append(middleware.NewBasicAuthSessionLoader(validator, opts.HtpasswdUserGroups, opts.LegacyPreferEmailToUser))
+	}
+	logger.Printf("Building session refresher: %s", sessionStore)
+	chain = chain.Append(middleware.NewStoredSessionRefresher(&middleware.StoredSessionLoaderOptions{
 		SessionStore:    sessionStore,
 		RefreshPeriod:   opts.Cookie.Refresh,
 		RefreshSession:  provider.RefreshSession,
