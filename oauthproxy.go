@@ -415,7 +415,7 @@ func buildChainForSessionHandler(opts *options.Options, provider providers.Provi
 				middlewareapi.CreateTokenToSessionFunc(verifier.Verify))
 		}
 
-		chain = chain.Append(handler)
+		chain = chain.Append(middleware.NewJwtSessionLoader(sessionLoaders)).Append(handler)
 	}
 
 	if validator != nil {
