@@ -1,7 +1,5 @@
 # Vx.x.x (Pre-release)
 
-- [#2019](https://github.com/oauth2-proxy/oauth2-proxy/issues/2019) Refresh Token on Demand
-
 ## Release Highlights
 
 ## Important Notes
@@ -9,6 +7,8 @@
 ## Breaking Changes
 
 ## Changes since v7.7.1
+
+- [#2019](https://github.com/oauth2-proxy/oauth2-proxy/issues/2019) Refresh Token on Demand
 
 # V7.7.1
 
