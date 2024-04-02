@@ -1,7 +1,5 @@
 # Vx.x.x (Pre-release)
 
-- [#2019](https://github.com/oauth2-proxy/oauth2-proxy/issues/2019) Refresh Token on Demand
-
 ## Release Highlights
 
 ## Important Notes
@@ -17,6 +15,7 @@
 - [#2821](https://github.com/oauth2-proxy/oauth2-proxy/pull/2821) feat: add CF-Connecting-IP as supported real ip header (@ondrejsika)
 - [#2620](https://github.com/oauth2-proxy/oauth2-proxy/pull/2620) fix: update code_verifier to use recommended method (@vishvananda)
 - [#2392](https://github.com/oauth2-proxy/oauth2-proxy/pull/2392) chore: extend test cases for oidc provider and documentation regarding implicit setting of the groups scope when no scope was specified in the config (@jjlakis / @tuunit)
+- [#2019](https://github.com/oauth2-proxy/oauth2-proxy/issues/2019) Refresh Token on Demand
 
 # V7.7.1
 
